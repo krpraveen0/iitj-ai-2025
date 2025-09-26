@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Search Algorithm Visualizer & Notes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Chosen Palette: Calm Neutrals -->
+    <!-- Application Structure Plan: The application is designed as an interactive educational dashboard. The central element is a canvas for visualizing graph search algorithms. A control panel on the left allows users to select an algorithm (BFS, DFS, UCS, Greedy, A*), control the animation (play, pause, step, reset), and adjust the speed. Below the controls, a dynamic 'Algorithm Details' panel provides context, showing the core idea and properties of the selected algorithm. On the right, two panels provide live insight: a 'Live Log' details the algorithm's decisions step-by-step, and a 'Data Structure' panel visualizes the queue, stack, or priority queue in real-time. This structure was chosen to create an active learning experience where users can directly connect theory (details panel) with execution (visualization and logs), providing a much deeper understanding than static notes. A new, comprehensive "Lecture Notes" section has been added below the visualizer to provide in-depth theoretical explanations and code examples for each algorithm, creating a complete learning resource. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: State space graph. Goal: Compare algorithms. Method: Interactive Canvas visualization (Vanilla JS). Interaction: User selects algorithm and controls animation playback. Hovering nodes shows details. Justification: A dynamic visualization is the most effective way to show how algorithms explore a graph differently. CONFIRM: NO SVG/Mermaid used.
+        - Report Info: Algorithm 'How it Works' section. Goal: Explain internal logic. Method: Animated data structure visualizer using styled HTML divs. Interaction: Animation is synced with the main canvas visualization. Justification: Makes the abstract concepts of queues, stacks, and priority queues concrete and easy to understand.
+        - Report Info: Algorithm properties and formulas. Goal: Inform & provide reference. Method: Dynamic text panels and a summary table (HTML). Interaction: Content updates when a new algorithm is selected. Justification: Keeps relevant theoretical information alongside the practical visualization.
+        - Report Info: Detailed theoretical notes. Goal: Teach in-depth concepts. Method: A new static section below the visualizer with styled text, mathematical formulas (MathJax), and code blocks (HTML/CSS). Interaction: "Copy code" buttons. Justification: Provides a comprehensive, university-level reference to complement the interactive tool. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #f8f7f4;
+            --bg-panel: #ffffff;
+            --text-primary: #1f2937;
+            --text-secondary: #4b5563;
+            --border-color: #e5e7eb;
+            --accent-primary: #6366f1;
+            --accent-secondary: #a78bfa;
+            --accent-dark: #4f46e5;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+        }
+        .panel {
+            background-color: var(--bg-panel);
+            border-radius: 0.75rem;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            overflow: hidden;
+        }
+        .control-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .algo-btn {
+            transition: all 0.2s ease-in-out;
+            border: 1px solid var(--border-color);
+        }
+        .algo-btn.active {
+            background-color: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-dark);
+        }
+        #data-structure-vis {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            min-height: 50px;
+        }
+        .ds-node {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-weight: 500;
+            font-size: 0.875rem;
+            background-color: #f3f4f6;
+            animation: fadeIn 0.3s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        #log-area {
+            counter-reset: log-counter;
+        }
+        .log-entry {
+            position: relative;
+            padding-left: 2rem;
+            font-size: 0.875rem;
+        }
+        .log-entry::before {
+            counter-increment: log-counter;
+            content: counter(log-counter);
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 1.5rem;
+            height: 1.5rem;
+            text-align: center;
+            line-height: 1.5rem;
+            font-weight: 600;
+            font-size: 0.75rem;
+            border-radius: 50%;
+            background-color: #e5e7eb;
+            color: var(--text-secondary);
+        }
+        .code-block {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            position: relative;
+            overflow-x: auto;
+            font-family: 'Source Code Pro', monospace;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            background-color: #334155;
+            color: #e2e8f0;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .copy-btn:hover {
+            background-color: #475569;
+        }
+        .math-section {
+            background-color: #f9fafb;
+            border-left: 4px solid var(--accent-primary);
+            padding: 1rem;
+            margin-top: 1rem;
+            border-radius: 0.25rem;
+        }
+        .math-section h5 {
+            font-weight: 600;
+            color: var(--accent-dark);
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body class="p-4 lg:p-6">
+
+    <div class="max-w-screen-2xl mx-auto">
+        <header class="text-center mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800">AI Search Algorithm Visualizer & Notes</h1>
+            <p class="text-md text-gray-500 mt-1">An interactive tool to understand and compare fundamental search algorithms.</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-12">
+            
+            <!-- Left Column: Controls and Details -->
+            <div class="lg:col-span-3 space-y-6">
+                <div class="panel">
+                    <div class="p-4 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold">Controls</h2>
+                    </div>
+                    <div class="p-4 space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Select Algorithm</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button id="algo-bfs" class="algo-btn py-2 px-3 rounded-md text-sm font-semibold">BFS</button>
+                                <button id="algo-dfs" class="algo-btn py-2 px-3 rounded-md text-sm font-semibold">DFS</button>
+                                <button id="algo-ucs" class="algo-btn py-2 px-3 rounded-md text-sm font-semibold">UCS</button>
+                                <button id="algo-greedy" class="algo-btn py-2 px-3 rounded-md text-sm font-semibold">Greedy</button>
+                                <button id="algo-astar" class="algo-btn py-2 px-3 rounded-md text-sm font-semibold col-span-2">A* Search</button>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 pt-2">
+                            <button id="play-pause-btn" class="control-btn bg-indigo-600 text-white font-semibold py-2 rounded-md hover:bg-indigo-700">Play</button>
+                            <button id="step-btn" class="control-btn bg-gray-200 font-semibold py-2 rounded-md hover:bg-gray-300">Step</button>
+                            <button id="reset-btn" class="control-btn bg-gray-200 font-semibold py-2 rounded-md hover:bg-gray-300">Reset</button>
+                        </div>
+                        <div>
+                            <label for="speed-slider" class="block text-sm font-medium text-gray-700">Speed</label>
+                            <input id="speed-slider" type="range" min="100" max="2000" value="1000" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="p-4 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold">Algorithm Details</h2>
+                    </div>
+                    <div id="details-content" class="p-4 space-y-3">
+                        <h3 id="details-title" class="text-xl font-bold text-indigo-600">Select an Algorithm</h3>
+                        <p id="details-idea" class="text-gray-600 text-sm">Choose an algorithm from the control panel to see its details and run the visualization.</p>
+                        <div id="details-properties"></div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Center Column: Canvas -->
+            <div class="lg:col-span-6 panel flex flex-col items-center justify-center p-2">
+                <div class="w-full text-center p-2">
+                     <p class="text-sm text-gray-500">A sample graph to demonstrate search algorithms. The goal is to find a path from <strong class="text-green-600">S (Start)</strong> to <strong class="text-red-600">G (Goal)</strong>.</p>
+                </div>
+                <canvas id="main-canvas" class="w-full rounded-b-lg"></canvas>
+            </div>
+
+            <!-- Right Column: Log and Data Structure -->
+            <div class="lg:col-span-3 space-y-6">
+                <div class="panel">
+                    <div class="p-4 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold">Data Structure (Frontier)</h2>
+                    </div>
+                    <div id="data-structure-vis" class="p-3 bg-gray-50">
+                        <!-- Nodes will be added here -->
+                    </div>
+                </div>
+
+                <div class="panel">
+                    <div class="p-4 border-b border-gray-200">
+                        <h2 class="text-lg font-semibold">Live Log</h2>
+                    </div>
+                    <div id="log-area" class="p-4 space-y-3 h-96 overflow-y-auto">
+                        <!-- Log entries will be added here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lecture Notes Section -->
+        <section>
+            <header class="text-center mb-8 border-t-2 border-gray-200 pt-12">
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-800">In-Depth Lecture Notes</h1>
+                <p class="text-md text-gray-500 mt-1">Detailed explanations, mathematical models, and Python implementations for each algorithm.</p>
+            </header>
+            
+            <div class="space-y-8 max-w-5xl mx-auto">
+                <!-- Introduction -->
+                <div class="panel p-6">
+                    <h2 class="text-2xl font-bold mb-3">1. Introduction: The Essence of AI Search</h2>
+                    <p class="text-gray-600 mb-4">In Artificial Intelligence, "search" is the fundamental process of navigating a space of possibilities to find a solution. Most problems in AI can be framed as a search problem: finding the right sequence of actions to reach a desired goal. To solve a problem using search, we must first formalize it by defining five key components:</p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700">
+                        <li><strong>State Space:</strong> The set of all possible configurations the environment can be in.</li>
+                        <li><strong>Initial State:</strong> The state where the agent begins.</li>
+                        <li><strong>Actions:</strong> The set of possible moves the agent can take to transition between states.</li>
+                        <li><strong>Transition Model:</strong> A function describing the result of an action: \( \text{RESULT}(s, a) \rightarrow s' \).</li>
+                        <li><strong>Goal Test:</strong> A condition that determines if a given state is a goal state.</li>
+                        <li><strong>Path Cost:</strong> A function assigning a numeric cost to a path, typically the sum of action costs.</li>
+                    </ul>
+                </div>
+                
+                <!-- Uninformed Search -->
+                <div class="space-y-8">
+                    <h2 class="text-3xl font-bold text-center">Uninformed (Blind) Search</h2>
+                    
+                    <!-- BFS -->
+                    <div class="panel p-6">
+                        <h3 class="text-2xl font-bold mb-3 text-indigo-600">2.1 Breadth-First Search (BFS)</h3>
+                        <p class="mb-4"><strong>Core Idea:</strong> Explores the state space layer by layer. It finds the shallowest goal state first by expanding all neighbors of a node before moving to the next level. It's optimal if all action costs are identical.</p>
+                        
+                        <div class="math-section">
+                            <h4 class="font-semibold text-lg">Mathematical Analysis</h4>
+                            <p>Let \(b\) be the branching factor and \(d\) be the depth of the shallowest goal node.</p>
+                            <h5>Completeness: Yes</h5>
+                            <p>BFS is complete. If a solution exists at a finite depth \(d\), BFS is guaranteed to find it. The algorithm systematically explores all nodes at depth \(k\) before moving to depth \(k+1\). Since \(b\) is finite, the goal at depth \(d\) will eventually be reached.</p>
+                            <h5>Optimality: Yes (if edge costs are uniform)</h5>
+                            <p>BFS is optimal under the condition that all path costs are a non-decreasing function of depth, which is true for uniform edge costs (e.g., all costs are 1). The first goal it finds will be at the shallowest depth \(d\). Any other path to a goal must have a depth \(d' \ge d\), so the path found is the shortest, and therefore optimal.</p>
+                            <h5>Time Complexity: \(O(b^d)\)</h5>
+                            <p>In the worst case, BFS must explore all nodes up to depth \(d\). The total number of nodes generated is the sum of a geometric progression: \(1 + b + b^2 + \dots + b^d = \frac{b^{d+1}-1}{b-1}\), which is \(O(b^d)\).</p>
+                            <h5>Space Complexity: \(O(b^d)\)</h5>
+                            <p>The space complexity is determined by the maximum number of nodes stored in the frontier (queue). In the worst case, this is when the algorithm is exploring the last level before the goal, which can contain up to \(b^d\) nodes.</p>
+                        </div>
+                        
+                        <h4 class="font-semibold mb-2 mt-4">Python Implementation: Shortest Path in a Social Network</h4>
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre><code class="language-python">from collections import deque
+
+def bfs_shortest_path(graph, start, goal):
+    """Finds the shortest path in an unweighted graph using BFS."""
+    # A queue for the frontier, storing paths
+    queue = deque([[start]])
+    visited = {start}
+
+    while queue:
+        # Get the first path from the queue
+        path = queue.popleft()
+        node = path[-1]
+
+        # If we've reached the goal, return the path
+        if node == goal:
+            return path
+        
+        # Explore neighbors
+        for neighbor in graph.get(node, []):
+            if neighbor not in visited:
+                visited.add(neighbor)
+                new_path = list(path)
+                new_path.append(neighbor)
+                queue.append(new_path)
+    
+    return "No path found"
+
+# Example: Find path from 'Alice' to 'Frank'
+social_network = {
+    'Alice': ['Bob', 'Diana'],
+    'Bob': ['Alice', 'Charlie', 'Eve'],
+    'Diana': ['Alice', 'Frank'],
+    'Charlie': ['Bob'],
+    'Eve': ['Bob', 'Frank'],
+    'Frank': ['Diana', 'Eve']
+}
+print(f"Shortest path: {bfs_shortest_path(social_network, 'Alice', 'Frank')}")
+# Expected Output: ['Alice', 'Diana', 'Frank']</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- DFS -->
+                    <div class="panel p-6">
+                        <h3 class="text-2xl font-bold mb-3 text-indigo-600">2.2 Depth-First Search (DFS)</h3>
+                        <p class="mb-4"><strong>Core Idea:</strong> Explores as deeply as possible along one path before backtracking. It follows a single path to its end, then backtracks to explore other branches. It's very memory efficient.</p>
+                        
+                        <div class="math-section">
+                            <h4 class="font-semibold text-lg">Mathematical Analysis</h4>
+                            <p>Let \(b\) be the branching factor and \(m\) be the maximum depth of the state space.</p>
+                            <h5>Completeness: No</h5>
+                            <p>DFS is not complete. In state spaces with infinite paths or cycles, DFS can follow a single path indefinitely and never backtrack to find a solution that may exist on another branch.</p>
+                            <h5>Optimality: No</h5>
+                            <p>DFS is not optimal. It makes no attempt to find a short path. It will return the first solution it finds, which could be at the maximum depth \(m\) of the tree, even if a much shorter solution exists at depth 1.</p>
+                            <h5>Time Complexity: \(O(b^m)\)</h5>
+                            <p>In the worst case, DFS may explore the entire state space down to its maximum depth \(m\). This can be much larger than the \(d\) of the shallowest solution.</p>
+                            <h5>Space Complexity: \(O(b \cdot m)\)</h5>
+                            <p>This is the primary advantage of DFS. It only needs to store the current path it is exploring (of length at most \(m\)) and the unexpanded sibling nodes for each node on that path. This linear space requirement makes it feasible for problems with large state spaces.</p>
+                        </div>
+
+                        <h4 class="font-semibold mb-2 mt-4">Python Implementation: Solving a Maze</h4>
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre><code class="language-python">def dfs_maze_solver(maze, start, goal):
+    """Solves a maze using DFS."""
+    stack = [[start]]
+    visited = {start}
+
+    while stack:
+        path = stack.pop()
+        (r, c) = path[-1]
+
+        if (r, c) == goal:
+            return path
+
+        # Possible moves: Down, Up, Right, Left
+        for dr, dc in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+            nr, nc = r + dr, c + dc
+
+            if (0 <= nr < len(maze) and 0 <= nc < len(maze[0]) and
+                    maze[nr][nc] == 0 and (nr, nc) not in visited):
+                visited.add((nr, nc))
+                new_path = list(path)
+                new_path.append((nr, nc))
+                stack.append(new_path)
+    
+    return "No path found"
+
+# Example: 0 is path, 1 is wall. Find path from (0,0) to (4,4)
+maze = [
+    [0, 1, 0, 0, 0],
+    [0, 1, 0, 1, 0],
+    [0, 0, 0, 1, 0],
+    [0, 1, 1, 1, 0],
+    [0, 0, 0, 0, 0]
+]
+print(f"Maze path: {dfs_maze_solver(maze, (0, 0), (4, 4))}")
+</code></pre>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Informed Search -->
+                <div class="space-y-8 mt-8">
+                    <h2 class="text-3xl font-bold text-center">Informed (Heuristic) Search</h2>
+
+                    <!-- UCS -->
+                    <div class="panel p-6">
+                        <h3 class="text-2xl font-bold mb-3 text-indigo-600">3.1 Uniform Cost Search (UCS)</h3>
+                        <p class="mb-4"><strong>Core Idea:</strong> A refinement of BFS that considers path cost. It explores the state space by expanding the node with the lowest path cost from the start (\(g(n)\)). It is optimal and complete.</p>
+                        
+                        <div class="math-section">
+                             <h4 class="font-semibold text-lg">Mathematical Analysis</h4>
+                            <p>Let \(C^*\) be the cost of the optimal solution path, and let \(\epsilon\) be the minimum cost of any action.</p>
+                            <h5>Completeness: Yes</h5>
+                            <p>UCS is complete, provided the cost of every step is greater than some small positive constant \(\epsilon\). This prevents infinite loops of zero-cost actions. Since paths are explored in non-decreasing order of cost, it will eventually explore paths of cost \(C^*\) if a solution exists.</p>
+                            <h5>Optimality: Yes</h5>
+                            <p>UCS is optimal. The proof is by contradiction. Assume UCS finds a goal \(G_2\) with path cost \(g(G_2)\), but there exists an optimal goal \(G_{opt}\) with cost \(C^* < g(G_2)\). Because UCS expands nodes in order of increasing path cost, it must have expanded every node on the optimal path to \(G_{opt}\) *before* expanding \(G_2\), as all nodes on that path have a cost \(g(n) \le C^* < g(G_2)\). This means \(G_{opt}\) would have been found first, which is a contradiction. Therefore, the first goal found by UCS must be optimal.</p>
+                            <h5>Time & Space Complexity: \(O(b^{1 + \lfloor C^*/\epsilon \rfloor})\)</h5>
+                            <p>The complexity is determined by the number of nodes with a path cost \(g(n)\) less than or equal to \(C^*\). The effective depth is approximately \(C^*/\epsilon\), leading to a complexity similar to BFS but with depth replaced by this cost-based measure.</p>
+                        </div>
+                        
+                        <h4 class="font-semibold mb-2 mt-4">Python Implementation: Finding the Cheapest Flight Route</h4>
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre><code class="language-python">import heapq
+
+def ucs_cheapest_path(graph, start, goal):
+    """Finds the cheapest path in a weighted graph using UCS."""
+    # Priority queue stores (cost, path)
+    pq = [(0, [start])]
+    visited = set()
+
+    while pq:
+        (cost, path) = heapq.heappop(pq)
+        node = path[-1]
+
+        if node in visited:
+            continue
+        visited.add(node)
+
+        if node == goal:
+            return (cost, path)
+
+        for neighbor, weight in graph.get(node, {}).items():
+            if neighbor not in visited:
+                new_cost = cost + weight
+                new_path = path + [neighbor]
+                heapq.heappush(pq, (new_cost, new_path))
+    
+    return "No path found"
+
+# Example: Find cheapest flight from 'JFK' to 'SFO'
+flight_routes = {
+    'JFK': {'ATL': 150, 'ORD': 200},
+    'ATL': {'SFO': 400, 'DFW': 100},
+    'ORD': {'DFW': 50},
+    'DFW': {'SFO': 300},
+    'SFO': {}
+}
+print(f"Cheapest flight: {ucs_cheapest_path(flight_routes, 'JFK', 'SFO')}")
+# Expected Output: (450, ['JFK', 'ORD', 'DFW', 'SFO'])
+</code></pre>
+                        </div>
+                    </div>
+                    
+                    <!-- Greedy Best-First Search -->
+                    <div class="panel p-6">
+                        <h3 class="text-2xl font-bold mb-3 text-indigo-600">3.2 Greedy Best-First Search</h3>
+                        <p class="mb-4"><strong>Core Idea:</strong> Expands the node that appears to be closest to the goal. It's "greedy" because it makes the locally best choice based solely on the heuristic, ignoring the cost to reach the node. It is fast but often suboptimal and incomplete.</p>
+
+                        <div class="math-section">
+                            <h4 class="font-semibold text-lg">Mathematical Analysis</h4>
+                             <p>The algorithm uses a Priority Queue ordered by a heuristic function \(h(n)\), which estimates the cost from node \(n\) to the goal.</p>
+                            <h5>Completeness: No</h5>
+                            <p>Like DFS, Greedy Search can be drawn down an infinite path or into a loop if the heuristic is misleading, and it will never backtrack to find another solution.</p>
+                            <h5>Optimality: No</h5>
+                            <p>By only considering \(h(n)\) and ignoring the path cost \(g(n)\), the algorithm can be easily misled. A path might seem short based on the heuristic, but have an extremely high actual cost. It will greedily choose this suboptimal path.</p>
+                            <h5>Time & Space Complexity: \(O(b^m)\)</h5>
+                            <p>In the worst case, the complexity is similar to DFS, as it can explore a single, unpromising path to its maximum depth. However, with a good heuristic, it can find a solution very quickly.</p>
+                        </div>
+
+                        <h4 class="font-semibold mb-2 mt-4">Python Implementation: Simple Route Finding</h4>
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre><code class="language-python">import heapq
+
+def greedy_search(graph, start, goal, heuristics):
+    """Finds a path using Greedy Best-First Search."""
+    # Priority queue stores (heuristic, path)
+    pq = [(heuristics[start], [start])]
+    visited = set()
+
+    while pq:
+        (_, path) = heapq.heappop(pq)
+        node = path[-1]
+
+        if node in visited:
+            continue
+        visited.add(node)
+
+        if node == goal:
+            return path
+        
+        for neighbor in graph.get(node, []):
+            if neighbor not in visited:
+                new_path = path + [neighbor]
+                heapq.heappush(pq, (heuristics[neighbor], new_path))
+
+    return "No path found"
+
+# Example: Heuristics are straight-line distance to 'G'
+simple_graph = {'S': ['A', 'B'], 'A': ['C', 'D'], 'B': ['E'], 'C': [], 'D': ['G'], 'E': ['G'], 'G': []}
+heuristics = {'S': 10, 'A': 7, 'B': 8, 'C': 4, 'D': 5, 'E': 3, 'G': 0}
+
+# Note: The optimal path is S->B->E->G, but Greedy will likely choose S->A first.
+print(f"Greedy path: {greedy_search(simple_graph, 'S', 'G', heuristics)}")
+# Expected Output might be: ['S', 'A', 'D', 'G']
+</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- A* Search -->
+                    <div class="panel p-6">
+                        <h3 class="text-2xl font-bold mb-3 text-indigo-600">3.3 A* Search</h3>
+                        <p class="mb-4"><strong>Core Idea:</strong> The most widely used search algorithm. It combines the strengths of UCS (favoring low cost paths) and Greedy Search (favoring paths that seem close to the goal). It is optimal and complete if its heuristic is admissible (never overestimates the true cost).</p>
+                        
+                        <div class="math-section">
+                            <h4 class="font-semibold text-lg">Mathematical Analysis</h4>
+                            <p>A* uses a Priority Queue ordered by the evaluation function \(f(n) = g(n) + h(n)\), where \(g(n)\) is the true cost from the start to node \(n\), and \(h(n)\) is the heuristic estimate of the cost from \(n\) to the goal.</p>
+                            <h5>Completeness: Yes</h5>
+                            <p>A* is complete under the same conditions as UCS (finite branching factor, positive step costs).</p>
+                            <h5>Optimality: Yes (if \(h(n)\) is admissible)</h5>
+                            <p>A* is guaranteed to be optimal if its heuristic \(h(n)\) is <strong>admissible</strong>, meaning it never overestimates the true cost, i.e., \(h(n) \le h^*(n)\) for all \(n\), where \(h^*(n)\) is the true cost from \(n\) to the goal.
+                            <br><br><strong>Proof by Contradiction:</strong>
+                            <ol class="list-decimal list-inside space-y-1">
+                                <li>Assume A* finds a suboptimal goal \(G_2\) with cost \(g(G_2) > C^*\), where \(C^*\) is the optimal cost.</li>
+                                <li>Let \(n\) be a node on an optimal path that is currently in the frontier.</li>
+                                <li>The cost to expand \(n\) is \(f(n) = g(n) + h(n)\).</li>
+                                <li>Because \(h(n)\) is admissible, \(h(n) \le h^*(n)\).</li>
+                                <li>So, \(f(n) \le g(n) + h^*(n)\). The term \(g(n) + h^*(n)\) represents the cost of the optimal path through node \(n\), which is exactly \(C^*\).</li>
+                                <li>Therefore, for any node \(n\) on an optimal path, \(f(n) \le C^*\).</li>
+                                <li>Since we assumed \(g(G_2) > C^*\), and \(h(G_2)=0\), we have \(f(G_2) = g(G_2) > C^*\).</li>
+                                <li>This means \(f(n) \le C^* < f(G_2)\). A* would always choose to expand node \(n\) before \(G_2\).</li>
+                                <li>This contradicts our initial assumption. Thus, A* must find the optimal path first.</li>
+                            </ol>
+                            </p>
+                            <h5>Time & Space Complexity</h5>
+                            <p>The complexity of A* is highly dependent on the quality of the heuristic. In the worst case, without a good heuristic (\(h(n)=0\)), it is identical to UCS. With a perfect heuristic, it finds the goal with no backtracking. The space complexity is still its main drawback as it stores all generated nodes in the frontier.</p>
+                        </div>
+                        
+                        <h4 class="font-semibold mb-2 mt-4">Python Implementation: Grid Pathfinding</h4>
+                        <div class="code-block">
+                            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                            <pre><code class="language-python">import heapq
+
+def heuristic(a, b):
+    """Manhattan distance heuristic."""
+    (x1, y1) = a
+    (x2, y2) = b
+    return abs(x1 - x2) + abs(y1 - y2)
+
+def a_star_search(grid, start, goal):
+    """Finds a path on a grid using A* search."""
+    pq = [(0, [start])] # (f_cost, path)
+    visited = {start}
+    g_costs = {start: 0}
+
+    while pq:
+        (_, path) = heapq.heappop(pq)
+        node = path[-1]
+
+        if node == goal:
+            return path
+        
+        (r, c) = node
+        for dr, dc in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+            neighbor = (r + dr, c + dc)
+            (nr, nc) = neighbor
+
+            if (0 <= nr < len(grid) and 0 <= nc < len(grid[0]) and grid[nr][nc] == 0):
+                new_g_cost = g_costs[node] + 1 # cost is always 1
+                if neighbor not in g_costs or new_g_cost < g_costs[neighbor]:
+                    g_costs[neighbor] = new_g_cost
+                    f_cost = new_g_cost + heuristic(neighbor, goal)
+                    visited.add(neighbor)
+                    new_path = path + [neighbor]
+                    heapq.heappush(pq, (f_cost, new_path))
+    return "No path found"
+
+grid_maze = [
+    [0, 1, 0, 0, 0],
+    [0, 1, 0, 1, 0],
+    [0, 0, 0, 0, 0], # Note a better path than DFS
+    [0, 1, 1, 1, 0],
+    [0, 0, 0, 1, 0]
+]
+print(f"A* grid path: {a_star_search(grid_maze, (0, 0), (4, 0))}")
+</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Practice Problems Section -->
+        <section>
+            <header class="text-center mb-8 border-t-2 border-gray-200 pt-12">
+                <h1 class="text-3xl md:text-4xl font-bold text-gray-800">Practice Problems & Solutions</h1>
+                <p class="text-md text-gray-500 mt-1">Apply your knowledge with these AIMA-inspired problems.</p>
+            </header>
+
+            <div class="space-y-8 max-w-5xl mx-auto">
+                <!-- Problem 1: Route Finding with A* -->
+                <div class="panel p-6">
+                    <h3 class="text-2xl font-bold mb-3">Problem 1: Route Finding with A* Search</h3>
+                    <div class="mb-4 space-y-2">
+                        <p>Consider the following map showing cities and the driving distance between them. The straight-line distance (heuristic, \(h(n)\)) from each city to the goal (Bucharest) is also provided. Your task is to find the optimal path from <strong>Arad</strong> to <strong>Bucharest</strong> using A* Search.</p>
+                        <div class="flex flex-col md:flex-row gap-6 items-center bg-gray-50 p-4 rounded-lg">
+                            <div class="text-sm text-gray-600 flex-grow">
+                                <strong class="block text-base text-gray-800 mb-2">Heuristic Values (Straight-Line Distance to Bucharest):</strong>
+                                <ul class="list-disc list-inside">
+                                    <li>Arad: 366</li>
+                                    <li>Bucharest: 0</li>
+                                    <li>Craiova: 160</li>
+                                    <li>Fagaras: 176</li>
+                                    <li>Pitesti: 100</li>
+                                    <li>Rimnicu Vilcea: 193</li>
+                                    <li>Sibiu: 253</li>
+                                    <li>Timisoara: 329</li>
+                                    <li>Zerind: 374</li>
+                                </ul>
+                            </div>
+                            <div class="text-center">
+                                <p class="font-semibold mb-2">Map of Romania (Simplified)</p>
+                                <div class="code-block bg-white text-gray-800 border !p-2 text-xs">
+<pre>
+Arad ---(75)--- Zerind ---(71)--- Oradea
+ | \             /
+(118) \           /
+ |   \         /
+Timisoara (140) Sibiu --(99)-- Fagaras --(211)-- Bucharest
+ |           /   |                            /
+(111)       /   (80)                         /
+ |         /     |                          /
+Lugoj -- Mehadia  Rimnicu Vilcea --(97)-- Pitesti --(101)-- Bucharest
+             \         /              /
+              Drobeta (146) Craiova --(138)--
+</pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <h4 class="font-semibold text-lg border-t pt-4 mt-4">Step-by-Step Solution</h4>
+                    <p class="text-sm text-gray-600 mb-3">We use A* search with the evaluation function \(f(n) = g(n) + h(n)\), where \(g(n)\) is the path cost from Arad and \(h(n)\) is the straight-line distance to Bucharest. The frontier is a priority queue ordered by the lowest \(f(n)\).</p>
+                    <div class="space-y-3 text-sm">
+                        <p><strong>1. Initialization:</strong><br>Start at Arad. Add it to the frontier.<br>
+                        <strong>Frontier:</strong> { Arad(\(f=366\)) } <i class="text-gray-500">[g=0, h=366]</i></p>
+                        
+                        <p><strong>2. Expand Arad (f=366):</strong><br>Arad's neighbors are Sibiu, Timisoara, and Zerind. Calculate their f-costs.<br>
+                        - Sibiu: \(f(n) = g(140) + h(253) = 393\)<br>
+                        - Timisoara: \(f(n) = g(118) + h(329) = 447\)<br>
+                        - Zerind: \(f(n) = g(75) + h(374) = 449\)<br>
+                        <strong>Frontier:</strong> { Sibiu(\(f=393\)), Timisoara(\(f=447\)), Zerind(\(f=449\)) }</p>
+
+                        <p><strong>3. Expand Sibiu (f=393):</strong><br>Sibiu has the lowest f-cost. Its neighbors are Arad (visited), Fagaras, and Rimnicu Vilcea.<br>
+                        - Fagaras: \(f(n) = g(140+99) + h(176) = 239 + 176 = 415\)<br>
+                        - Rimnicu Vilcea: \(f(n) = g(140+80) + h(193) = 220 + 193 = 413\)<br>
+                        <strong>Frontier:</strong> { Rimnicu Vilcea(\(f=413\)), Fagaras(\(f=415\)), Timisoara(\(f=447\)), Zerind(\(f=449\)) }</p>
+
+                        <p><strong>4. Expand Rimnicu Vilcea (f=413):</strong><br>It has the lowest f-cost. Its neighbors are Sibiu (visited), Pitesti, and Craiova.<br>
+                        - Pitesti: \(f(n) = g(220+97) + h(100) = 317 + 100 = 417\)<br>
+                        - Craiova: \(f(n) = g(220+146) + h(160) = 366 + 160 = 526\)<br>
+                        <strong>Frontier:</strong> { Fagaras(\(f=415\)), Pitesti(\(f=417\)), Timisoara(\(f=447\)), Zerind(\(f=449\)), Craiova(\(f=526\)) }</p>
+
+                        <p><strong>5. Expand Fagaras (f=415):</strong><br>It now has the lowest f-cost. Its neighbors are Sibiu (visited) and Bucharest.<br>
+                        - Bucharest: \(f(n) = g(239+211) + h(0) = 450 + 0 = 450\)<br>
+                        <strong>Frontier:</strong> { Pitesti(\(f=417\)), Timisoara(\(f=447\)), Bucharest(\(f=450\)), Zerind(\(f=449\)), Craiova(\(f=526\)) }</p>
+                        
+                        <p><strong>6. Expand Pitesti (f=417):</strong><br>It has the lowest f-cost. Its neighbors include Bucharest.<br>
+                        - Bucharest: \(f(n) = g(317+101) + h(0) = 418 + 0 = 418\)<br>
+                        The path through Pitesti to Bucharest has a lower f-cost (418) than the existing path through Fagaras (450). We update the frontier.<br>
+                        <strong>Frontier:</strong> { Bucharest(\(f=418\)), Timisoara(\(f=447\)), Zerind(\(f=449\)), Craiova(\(f=526\)) }</p>
+
+                        <p><strong>7. Expand Bucharest (f=418):</strong><br>The node with the lowest f-cost is the goal. We have found the optimal path.</p>
+
+                        <div class="bg-indigo-50 border border-indigo-200 text-indigo-800 p-4 rounded-lg mt-4">
+                            <strong>Final Path:</strong> Arad → Sibiu → Rimnicu Vilcea → Pitesti → Bucharest<br>
+                            <strong>Total Cost:</strong> 418
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Problem 2: 8-Puzzle -->
+                <div class="panel p-6">
+                    <h3 class="text-2xl font-bold mb-3">Problem 2: The 8-Puzzle</h3>
+                    <div class="mb-4 space-y-2">
+                        <p>Given the initial state of an 8-puzzle, show the first step of A* search to find a path to the goal state. Use the <strong>Manhattan distance</strong> heuristic: for each tile, the number of vertical and horizontal moves required to get it to its goal position.</p>
+                        <div class="flex justify-center gap-8 font-mono text-lg p-4 bg-gray-50 rounded-lg">
+                            <div><strong>Initial State</strong><pre class="mt-1">7 2 4<br>5 0 6<br>8 3 1</pre></div>
+                            <div><strong>Goal State</strong><pre class="mt-1">0 1 2<br>3 4 5<br>6 7 8</pre></div>
+                        </div>
+                    </div>
+
+                    <h4 class="font-semibold text-lg border-t pt-4 mt-4">Step-by-Step Solution</h4>
+                    <p class="text-sm text-gray-600 mb-3">First, we calculate the heuristic \(h(n)\) for the initial state. The empty tile (0) is ignored.</p>
+                    <div class="space-y-3 text-sm">
+                        <p><strong>1. Calculate h(n) for the Initial State:</strong><br>
+                        - Tile 1: 3 moves (3 right)<br>
+                        - Tile 2: 2 moves (1 right, 1 up)<br>
+                        - Tile 3: 3 moves (1 left, 2 down)<br>
+                        - Tile 4: 2 moves (2 up)<br>
+                        - Tile 5: 2 moves (1 left, 1 up)<br>
+                        - Tile 6: 3 moves (1 right, 2 up)<br>
+                        - Tile 7: 3 moves (2 down, 1 left)<br>
+                        - Tile 8: 3 moves (2 left, 1 down)<br>
+                        <strong>Total h(initial) = 3+2+3+2+2+3+3+3 = 21</strong>. The initial state has \(g(n)=0\), so \(f(n) = 21\).</p>
+
+                        <p><strong>2. Generate Children and Calculate Their f(n) Costs:</strong><br>
+                        From the initial state, the empty tile (0) can move Up, Down, Left, or Right. For all children, \(g(n)=1\).</p>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                            <div class="bg-gray-50 p-3 rounded">
+                                <strong>Move UP:</strong> (Swap 0 and 2)<br>
+                                <pre class="font-mono">7 0 4<br>5 2 6<br>8 3 1</pre>
+                                \(h(n) = 20\), \(f(n) = 1 + 20 = 21\)
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded">
+                                <strong>Move DOWN:</strong> (Swap 0 and 3)<br>
+                                <pre class="font-mono">7 2 4<br>5 3 6<br>8 0 1</pre>
+                                \(h(n) = 22\), \(f(n) = 1 + 22 = 23\)
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded">
+                                <strong>Move LEFT:</strong> (Swap 0 and 5)<br>
+                                <pre class="font-mono">7 2 4<br>0 5 6<br>8 3 1</pre>
+                                \(h(n) = 20\), \(f(n) = 1 + 20 = 21\)
+                            </div>
+                            <div class="bg-gray-50 p-3 rounded">
+                                <strong>Move RIGHT:</strong> (Swap 0 and 6)<br>
+                                <pre class="font-mono">7 2 4<br>5 6 0<br>8 3 1</pre>
+                                \(h(n) = 22\), \(f(n) = 1 + 22 = 23\)
+                            </div>
+                        </div>
+
+                        <p class="mt-2"><strong>3. Select the Next Node to Expand:</strong><br> The frontier contains four nodes. Two nodes have the minimum f-cost of 21 (Move UP and Move LEFT). A* would choose one of these to expand next (tie-breaking rules would apply).</p>
+                    </div>
+                </div>
+
+                <!-- Problem 3: Algorithm Comparison -->
+                <div class="panel p-6">
+                    <h3 class="text-2xl font-bold mb-3">Problem 3: Algorithm Comparison</h3>
+                    <div class="mb-4 space-y-2">
+                        <p>Consider the following simple graph where the goal is to get from <strong>S</strong> to <strong>G</strong>. Compare the paths found by Depth-First Search, Uniform-Cost Search, and A* Search. Assume DFS explores children in alphabetical order.</p>
+                        <div class="text-center font-mono text-lg p-4 bg-gray-50 rounded-lg">
+                            <pre>
+S --(1)-- A --(1)-- B --(10)-- G
+|         |
+(5)       (5)
+|         |
+C --(1)-- D --(1)---- G
+                            </pre>
+                            <p class="text-sm text-gray-600 font-sans mt-2">Heuristics h(n) to G: S=6, A=5, B=1, C=2, D=1, G=0</p>
+                        </div>
+                    </div>
+
+                    <h4 class="font-semibold text-lg border-t pt-4 mt-4">Step-by-Step Solution</h4>
+                    <div class="space-y-4 text-sm">
+                        <div>
+                            <strong class="text-base">1. Depth-First Search (DFS):</strong>
+                            <p>DFS goes deep. From S, it explores A first. From A, it explores B first. From B, it finds G.</p>
+                            <div class="bg-gray-50 p-3 rounded mt-1">
+                                <strong>Path Found:</strong> S → A → B → G<br>
+                                <strong>Total Cost:</strong> 1 + 1 + 10 = 12
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">DFS finds a path quickly but it is clearly not the cheapest one.</p>
+                        </div>
+                        <div>
+                            <strong class="text-base">2. Uniform-Cost Search (UCS):</strong>
+                            <p>UCS expands the node with the lowest path cost \(g(n)\).</p>
+                            <ul class="list-decimal list-inside ml-4 mt-1 space-y-1">
+                                <li>Expand S. Frontier: {A(1), C(5)}</li>
+                                <li>Expand A (cost 1). Frontier: {B(2), D(6), C(5)}</li>
+                                <li>Expand B (cost 2). Frontier: {G(12), C(5), D(6)}</li>
+                                <li>Expand C (cost 5). Frontier: {D(6), G(12)} (Note: D from C is cheaper than D from A)</li>
+                                <li>Expand D (cost 6). Frontier: {G(7), G(12)}</li>
+                                <li>Expand G (cost 7). Goal reached.</li>
+                            </ul>
+                            <div class="bg-gray-50 p-3 rounded mt-1">
+                                <strong>Path Found:</strong> S → C → D → G<br>
+                                <strong>Total Cost:</strong> 5 + 1 + 1 = 7
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">UCS finds the optimal path but explores more nodes than necessary (like B).</p>
+                        </div>
+                        <div>
+                            <strong class="text-base">3. A* Search:</strong>
+                            <p>A* expands the node with the lowest \(f(n)=g(n)+h(n)\).</p>
+                            <ul class="list-decimal list-inside ml-4 mt-1 space-y-1">
+                                <li>Expand S. Frontier: {A(f=1+5=6), C(f=5+2=7)}</li>
+                                <li>Expand A (f=6). Frontier: {B(f=2+1=3), C(f=7), D(f=6+1=7)}</li>
+                                <li>Expand B (f=3). Frontier: {G(f=12+0=12), C(f=7), D(f=7)}</li>
+                                <li>Expand C (f=7). Frontier: {D(f=6+1=7), G(f=12)} (Path to D via C is same f-cost as via A)</li>
+                                <li>Expand D (f=7). Frontier: {G(f=7+0=7), G(f=12)}</li>
+                                <li>Expand G (f=7). Goal reached.</li>
+                            </ul>
+                            <div class="bg-indigo-50 border border-indigo-200 text-indigo-800 p-3 rounded mt-1">
+                                <strong>Path Found:</strong> S → C → D → G<br>
+                                <strong>Total Cost:</strong> 7
+                            </div>
+                             <p class="text-xs text-gray-500 mt-1">A* also finds the optimal path. While in this case it explored a similar number of nodes to UCS, in larger graphs A* is typically much more efficient because the heuristic guides it away from expensive, unpromising paths like the one through B.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Problem 4: Heuristic Admissibility -->
+                 <div class="panel p-6">
+                    <h3 class="text-2xl font-bold mb-3">Problem 4: Heuristic Admissibility</h3>
+                    <div class="mb-4 space-y-2">
+                        <p>An admissible heuristic is one that <strong>never overestimates</strong> the true cost to the goal. This is a critical property for A* to guarantee optimality. For the graph from Problem 3, determine if the provided heuristic \(h(n)\) is admissible.</p>
+                    </div>
+
+                    <h4 class="font-semibold text-lg border-t pt-4 mt-4">Step-by-Step Solution</h4>
+                    <p class="text-sm text-gray-600 mb-3">We must compare the heuristic value \(h(n)\) at each node to the true optimal cost to G, which we'll call \(h^*(n)\). If \(h(n) \le h^*(n)\) for all nodes, the heuristic is admissible.</p>
+                    <div class="space-y-3 text-sm">
+                        <p><strong>1. Calculate True Optimal Costs \(h^*(n)\):</strong></p>
+                        <ul class="list-disc list-inside ml-4">
+                            <li>\(h^*(G) = 0\) (Cost to itself is 0)</li>
+                            <li>\(h^*(D) = 1\) (Path: D→G)</li>
+                            <li>\(h^*(C) = 2\) (Path: C→D→G)</li>
+                            <li>\(h^*(B) = 10\) (Path: B→G)</li>
+                            <li>\(h^*(A) = 6\) (Path: A→D→G)</li>
+                            <li>\(h^*(S) = 7\) (Path: S→C→D→G)</li>
+                        </ul>
+                        
+                        <p><strong>2. Compare \(h(n)\) with \(h^*(n)\) for each node:</strong></p>
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-100">
+                                    <th class="p-2 border">Node (n)</th>
+                                    <th class="p-2 border">Heuristic h(n)</th>
+                                    <th class="p-2 border">True Cost h*(n)</th>
+                                    <th class="p-2 border">Is \(h(n) \le h^*(n)\)?</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr><td class="p-2 border">S</td><td class="p-2 border">6</td><td class="p-2 border">7</td><td class="p-2 border text-green-600">Yes</td></tr>
+                                <tr><td class="p-2 border">A</td><td class="p-2 border">5</td><td class="p-2 border">6</td><td class="p-2 border text-green-600">Yes</td></tr>
+                                <tr><td class="p-2 border">B</td><td class="p-2 border">1</td><td class="p-2 border">10</td><td class="p-2 border text-green-600">Yes</td></tr>
+                                <tr><td class="p-2 border">C</td><td class="p-2 border">2</td><td class="p-2 border">2</td><td class="p-2 border text-green-600">Yes</td></tr>
+                                <tr><td class="p-2 border">D</td><td class="p-2 border">1</td><td class="p-2 border">1</td><td class="p-2 border text-green-600">Yes</td></tr>
+                                <tr><td class="p-2 border">G</td><td class="p-2 border">0</td><td class="p-2 border">0</td><td class="p-2 border text-green-600">Yes</td></tr>
+                            </tbody>
+                        </table>
+
+                        <div class="bg-green-50 border border-green-200 text-green-800 p-4 rounded-lg mt-4">
+                            <strong>Conclusion:</strong> Since the condition \(h(n) \le h^*(n)\) holds for every node in the state space, the heuristic is <strong>admissible</strong>. This is why A* was guaranteed to find the optimal path in Problem 3.
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const canvas = document.getElementById('main-canvas');
+    const ctx = canvas.getContext('2d');
+
+    const algoBtns = {
+        bfs: document.getElementById('algo-bfs'),
+        dfs: document.getElementById('algo-dfs'),
+        ucs: document.getElementById('algo-ucs'),
+        greedy: document.getElementById('algo-greedy'),
+        astar: document.getElementById('algo-astar')
+    };
+    const playPauseBtn = document.getElementById('play-pause-btn');
+    const stepBtn = document.getElementById('step-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const speedSlider = document.getElementById('speed-slider');
+    const detailsTitle = document.getElementById('details-title');
+    const detailsIdea = document.getElementById('details-idea');
+    const detailsProperties = document.getElementById('details-properties');
+    const dsVis = document.getElementById('data-structure-vis');
+    const logArea = document.getElementById('log-area');
+
+    let state = {
+        isPlaying: false,
+        currentAlgorithm: null,
+        animationSpeed: 1000,
+        animationFrameId: null,
+        simulationSteps: [],
+        currentStep: 0,
+    };
+    
+    const graph = {
+        nodes: {
+            'S': { x: 0.15, y: 0.5, h: 10 },
+            'A': { x: 0.4, y: 0.2, h: 7 },
+            'B': { x: 0.4, y: 0.8, h: 8 },
+            'C': { x: 0.65, y: 0.4, h: 4 },
+            'D': { x: 0.65, y: 0.6, h: 5 },
+            'G': { x: 0.85, y: 0.5, h: 0 }
+        },
+        edges: [
+            { from: 'S', to: 'A', cost: 3 },
+            { from: 'S', to: 'B', cost: 2 },
+            { from: 'A', to: 'C', cost: 5 },
+            { from: 'B', to: 'D', cost: 3 },
+            { from: 'C', to: 'G', cost: 6 },
+            { from: 'D', to: 'G', cost: 7 },
+            { from: 'A', to: 'D', cost: 2 },
+        ],
+        startNode: 'S',
+        goalNode: 'G'
+    };
+    
+    const algoDetails = {
+        bfs: {
+            title: 'Breadth-First Search (BFS)',
+            idea: 'Explores the state space layer by layer. It finds the shallowest goal state first by expanding all neighbors of a node before moving to the next level.',
+            properties: `<ul>
+                <li><strong>Complete?</strong> Yes.</li>
+                <li><strong>Optimal?</strong> Yes (if all action costs are 1).</li>
+                <li><strong>Data Structure:</strong> Queue (FIFO)</li>
+            </ul>`
+        },
+        dfs: {
+            title: 'Depth-First Search (DFS)',
+            idea: 'Explores as deeply as possible along one path before backtracking. It follows a single path to its end, then backtracks to explore other branches.',
+            properties: `<ul>
+                <li><strong>Complete?</strong> No (can get stuck in loops).</li>
+                <li><strong>Optimal?</strong> No.</li>
+                <li><strong>Data Structure:</strong> Stack (LIFO)</li>
+            </ul>`
+        },
+        ucs: {
+            title: 'Uniform Cost Search (UCS)',
+            idea: 'Explores by expanding the node with the lowest path cost from the start. It guarantees finding the cheapest path.',
+            properties: `<ul>
+                <li><strong>Complete?</strong> Yes.</li>
+                <li><strong>Optimal?</strong> Yes.</li>
+                <li><strong>Data Structure:</strong> Priority Queue (by cost g(n))</li>
+            </ul>`
+        },
+        greedy: {
+            title: 'Greedy Best-First Search',
+            idea: 'Expands the node that appears to be closest to the goal based on a heuristic estimate. It makes the locally optimal choice.',
+            properties: `<ul>
+                <li><strong>Complete?</strong> No.</li>
+                <li><strong>Optimal?</strong> No.</li>
+                <li><strong>Data Structure:</strong> Priority Queue (by heuristic h(n))</li>
+            </ul>`
+        },
+        astar: {
+            title: 'A* Search',
+            idea: 'Combines UCS and Greedy Search. It expands the node with the lowest value of f(n) = g(n) + h(n), balancing the cost-so-far with the estimated cost-to-go.',
+            properties: `<ul>
+                <li><strong>Complete?</strong> Yes.</li>
+                <li><strong>Optimal?</strong> Yes (with admissible heuristic).</li>
+                <li><strong>Data Structure:</strong> Priority Queue (by f(n))</li>
+            </ul>`
+        }
+    };
+
+    let nodeRadius;
+
+    function resizeCanvas() {
+        const container = canvas.parentElement;
+        const size = Math.min(container.clientWidth, 600);
+        canvas.width = size;
+        canvas.height = size * 0.8;
+        nodeRadius = canvas.width / 25;
+        drawGraph();
+    }
+
+    function drawGraph(path = [], visited = new Set(), frontier = []) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 2;
+        graph.edges.forEach(edge => {
+            const fromNode = graph.nodes[edge.from];
+            const toNode = graph.nodes[edge.to];
+            ctx.beginPath();
+            ctx.moveTo(fromNode.x * canvas.width, fromNode.y * canvas.height);
+            ctx.lineTo(toNode.x * canvas.width, toNode.y * canvas.height);
+            ctx.stroke();
+
+            const midX = (fromNode.x + toNode.x) / 2 * canvas.width;
+            const midY = (fromNode.y + toNode.y) / 2 * canvas.height;
+            ctx.fillStyle = '#64748b';
+            ctx.font = `${nodeRadius * 0.6}px Inter`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(edge.cost, midX + 5, midY - 5);
+        });
+
+        if (path.length > 1) {
+            ctx.strokeStyle = '#4f46e5';
+            ctx.lineWidth = 4;
+            for (let i = 0; i < path.length - 1; i++) {
+                const fromNode = graph.nodes[path[i]];
+                const toNode = graph.nodes[path[i+1]];
+                ctx.beginPath();
+                ctx.moveTo(fromNode.x * canvas.width, fromNode.y * canvas.height);
+                ctx.lineTo(toNode.x * canvas.width, toNode.y * canvas.height);
+                ctx.stroke();
+            }
+        }
+        
+        Object.keys(graph.nodes).forEach(key => {
+            const node = graph.nodes[key];
+            ctx.beginPath();
+            ctx.arc(node.x * canvas.width, node.y * canvas.height, nodeRadius, 0, 2 * Math.PI);
+
+            let color = '#f1f5f9';
+            if (frontier.some(f => f.node === key)) color = '#d8b4fe';
+            if (visited.has(key)) color = '#a78bfa';
+            if (path.includes(key)) color = '#6366f1';
+            if (key === graph.startNode) color = '#10b981';
+            if (key === graph.goalNode) color = '#ef4444';
+
+            ctx.fillStyle = color;
+            ctx.fill();
+            ctx.strokeStyle = '#4b5563';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = (color === '#f1f5f9') ? '#334155' : 'white';
+            ctx.font = `bold ${nodeRadius * 0.8}px Inter`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(key, node.x * canvas.width, node.y * canvas.height);
+
+             if (state.currentAlgorithm === 'greedy' || state.currentAlgorithm === 'astar') {
+                ctx.fillStyle = '#475569';
+                ctx.font = `${nodeRadius * 0.6}px Inter`;
+                ctx.fillText(`h=${node.h}`, node.x * canvas.width, node.y * canvas.height + nodeRadius * 1.5);
+            }
+        });
+    }
+    
+    function updateDetails(algoKey) {
+        const details = algoDetails[algoKey];
+        detailsTitle.textContent = details.title;
+        detailsIdea.textContent = details.idea;
+        detailsProperties.innerHTML = details.properties;
+    }
+
+    function addLog(message, type = 'info') {
+        const entry = document.createElement('div');
+        entry.className = 'log-entry text-gray-700';
+        entry.innerHTML = message;
+        logArea.appendChild(entry);
+        logArea.scrollTop = logArea.scrollHeight;
+    }
+
+    function updateDataStructure(frontier) {
+        dsVis.innerHTML = '';
+        frontier.forEach(item => {
+            const nodeEl = document.createElement('div');
+            nodeEl.className = 'ds-node';
+            let text = item.node;
+            if (state.currentAlgorithm === 'ucs') text += `(${item.cost})`;
+            if (state.currentAlgorithm === 'greedy') text += `(${item.heuristic})`;
+            if (state.currentAlgorithm === 'astar') text += `(${item.f_cost})`;
+            nodeEl.textContent = text;
+            dsVis.appendChild(nodeEl);
+        });
+    }
+
+    function getNeighbors(nodeKey) {
+        const neighbors = [];
+        graph.edges.forEach(edge => {
+            if (edge.from === nodeKey) neighbors.push({ node: edge.to, cost: edge.cost });
+            if (edge.to === nodeKey) neighbors.push({ node: edge.from, cost: edge.cost });
+        });
+        return neighbors;
+    }
+    
+    function reconstructPath(cameFrom, current) {
+        const path = [current];
+        while (cameFrom[current]) {
+            current = cameFrom[current];
+            path.unshift(current);
+        }
+        return path;
+    }
+    
+    function runAlgorithm(algoKey) {
+        state.simulationSteps = [];
+        const start = graph.startNode;
+        const goal = graph.goalNode;
+
+        let frontier = [];
+        let cameFrom = {};
+        let costSoFar = {};
+        let visited = new Set();
+        
+        costSoFar[start] = 0;
+
+        const addStep = (message, currentPath, currentFrontier, isFinal = false) => {
+            state.simulationSteps.push({ 
+                message, 
+                visited: new Set(visited),
+                path: currentPath, 
+                frontier: JSON.parse(JSON.stringify(currentFrontier)),
+                isFinal
+            });
+        };
+        
+        switch (algoKey) {
+            case 'bfs':
+                frontier.push({ node: start });
+                addStep(`Start. Add ${start} to queue.`, [], frontier);
+                while (frontier.length > 0) {
+                    const current = frontier.shift().node;
+                    if (visited.has(current)) continue;
+                    visited.add(current);
+                    const path = reconstructPath(cameFrom, current);
+                    addStep(`Expanding ${current}.`, path, frontier);
+                    if (current === goal) {
+                        addStep(`Goal found at ${current}! Path cost: ${path.length - 1}`, path, frontier, true);
+                        return;
+                    }
+                    getNeighbors(current).forEach(neighbor => {
+                        if (!visited.has(neighbor.node) && !frontier.some(f => f.node === neighbor.node)) {
+                           cameFrom[neighbor.node] = current;
+                           frontier.push({ node: neighbor.node });
+                        }
+                    });
+                    addStep(`Added neighbors of ${current} to queue.`, path, frontier);
+                }
+                break;
+            case 'dfs':
+                frontier.push({ node: start });
+                addStep(`Start. Add ${start} to stack.`, [], frontier);
+                 while (frontier.length > 0) {
+                    const current = frontier.pop().node;
+                     if (visited.has(current)) continue;
+                    visited.add(current);
+                    const path = reconstructPath(cameFrom, current);
+                    addStep(`Expanding ${current}.`, path, frontier);
+                    if (current === goal) {
+                        addStep(`Goal found at ${current}!`, path, frontier, true);
+                        return;
+                    }
+                    getNeighbors(current).reverse().forEach(neighbor => {
+                        if (!visited.has(neighbor.node)) {
+                           cameFrom[neighbor.node] = current;
+                           frontier.push({ node: neighbor.node });
+                        }
+                    });
+                     addStep(`Added neighbors of ${current} to stack.`, path, frontier);
+                }
+                break;
+            case 'ucs':
+                frontier.push({ node: start, cost: 0 });
+                addStep(`Start. Add ${start} (cost 0) to PQ.`, [], frontier);
+                while (frontier.length > 0) {
+                    frontier.sort((a, b) => a.cost - b.cost);
+                    const currentItem = frontier.shift();
+                    const current = currentItem.node;
+                    if (visited.has(current)) continue;
+                    visited.add(current);
+                    const path = reconstructPath(cameFrom, current);
+                    addStep(`Expanding ${current} (cost ${costSoFar[current]}).`, path, frontier);
+                    if (current === goal) {
+                        addStep(`Goal found at ${current}! Path cost: ${costSoFar[current]}`, path, frontier, true);
+                        return;
+                    }
+                    getNeighbors(current).forEach(neighbor => {
+                        const newCost = costSoFar[current] + neighbor.cost;
+                        if (!costSoFar.hasOwnProperty(neighbor.node) || newCost < costSoFar[neighbor.node]) {
+                            costSoFar[neighbor.node] = newCost;
+                            cameFrom[neighbor.node] = current;
+                            frontier.push({ node: neighbor.node, cost: newCost });
+                        }
+                    });
+                    addStep(`Updated costs for neighbors of ${current}.`, path, frontier);
+                }
+                break;
+            case 'greedy':
+                frontier.push({ node: start, heuristic: graph.nodes[start].h });
+                addStep(`Start. Add ${start} (h=${graph.nodes[start].h}) to PQ.`, [], frontier);
+                while (frontier.length > 0) {
+                    frontier.sort((a, b) => a.heuristic - b.heuristic);
+                    const current = frontier.shift().node;
+                    if (visited.has(current)) continue;
+                    visited.add(current);
+                    const path = reconstructPath(cameFrom, current);
+                    addStep(`Expanding ${current} (h=${graph.nodes[current].h}).`, path, frontier);
+                    if (current === goal) {
+                        addStep(`Goal found at ${current}!`, path, frontier, true);
+                        return;
+                    }
+                    getNeighbors(current).forEach(neighbor => {
+                        if (!visited.has(neighbor.node) && !frontier.some(f => f.node === neighbor.node)) {
+                           cameFrom[neighbor.node] = current;
+                           frontier.push({ node: neighbor.node, heuristic: graph.nodes[neighbor.node].h });
+                        }
+                    });
+                    addStep(`Added neighbors of ${current} to PQ.`, path, frontier);
+                }
+                break;
+            case 'astar':
+                const f_costs = {};
+                f_costs[start] = graph.nodes[start].h;
+                frontier.push({ node: start, f_cost: f_costs[start] });
+                addStep(`Start. Add ${start} (f=${f_costs[start]}) to PQ.`, [], frontier);
+                 while (frontier.length > 0) {
+                    frontier.sort((a, b) => a.f_cost - b.f_cost);
+                    const current = frontier.shift().node;
+                    if (visited.has(current)) continue;
+                    visited.add(current);
+                    const path = reconstructPath(cameFrom, current);
+                    addStep(`Expanding ${current} (g=${costSoFar[current]}, h=${graph.nodes[current].h}, f=${f_costs[current] || costSoFar[current] + graph.nodes[current].h })`, path, frontier);
+                    if (current === goal) {
+                        addStep(`Goal found at ${current}! Path cost: ${costSoFar[current]}`, path, frontier, true);
+                        return;
+                    }
+                    getNeighbors(current).forEach(neighbor => {
+                        const new_g_cost = costSoFar[current] + neighbor.cost;
+                        if (!costSoFar.hasOwnProperty(neighbor.node) || new_g_cost < costSoFar[neighbor.node]) {
+                            costSoFar[neighbor.node] = new_g_cost;
+                            cameFrom[neighbor.node] = current;
+                            f_costs[neighbor.node] = new_g_cost + graph.nodes[neighbor.node].h;
+                            if (!frontier.some(f => f.node === neighbor.node)) {
+                                frontier.push({ node: neighbor.node, f_cost: f_costs[neighbor.node] });
+                            }
+                        }
+                    });
+                    addStep(`Updated costs for neighbors of ${current}.`, path, frontier);
+                 }
+                 break;
+        }
+        addStep('Failed to find a path to the goal.', reconstructPath(cameFrom, Object.keys(cameFrom).pop() || start), frontier, true);
+    }
+    
+    function animate() {
+        if (!state.isPlaying || state.currentStep >= state.simulationSteps.length) {
+            pauseAnimation();
+            return;
+        }
+        const step = state.simulationSteps[state.currentStep];
+        addLog(step.message);
+        updateDataStructure(step.frontier);
+        drawGraph(step.path, step.visited, step.frontier);
+        state.currentStep++;
+        if (state.currentStep >= state.simulationSteps.length || step.isFinal) {
+            pauseAnimation();
+        } else {
+            state.animationFrameId = setTimeout(animate, state.animationSpeed);
+        }
+    }
+
+    function playAnimation() {
+        state.isPlaying = true;
+        playPauseBtn.textContent = 'Pause';
+        stepBtn.disabled = true;
+        animate();
+    }
+
+    function pauseAnimation() {
+        state.isPlaying = false;
+        clearTimeout(state.animationFrameId);
+        playPauseBtn.textContent = 'Play';
+        stepBtn.disabled = false;
+        if (state.currentStep >= state.simulationSteps.length) {
+            playPauseBtn.disabled = true;
+            stepBtn.disabled = true;
+        }
+    }
+
+    function doStep() {
+        if (state.currentStep < state.simulationSteps.length) {
+            const step = state.simulationSteps[state.currentStep];
+            addLog(step.message);
+            updateDataStructure(step.frontier);
+            drawGraph(step.path, step.visited, step.frontier);
+            state.currentStep++;
+            if (state.currentStep >= state.simulationSteps.length || step.isFinal) {
+                playPauseBtn.disabled = true;
+                stepBtn.disabled = true;
+            }
+        }
+    }
+    
+    function handleAlgoSelect(algoKey) {
+        pauseAnimation();
+        Object.values(algoBtns).forEach(btn => btn.classList.remove('active'));
+        algoBtns[algoKey].classList.add('active');
+        state.currentAlgorithm = algoKey;
+        resetSimulation();
+        updateDetails(algoKey);
+        runAlgorithm(algoKey);
+    }
+
+    function resetSimulation() {
+        pauseAnimation();
+        state.currentStep = 0;
+        state.simulationSteps = [];
+        playPauseBtn.disabled = false;
+        stepBtn.disabled = false;
+        logArea.innerHTML = '';
+        dsVis.innerHTML = '';
+        drawGraph();
+        if (state.currentAlgorithm) {
+            runAlgorithm(state.currentAlgorithm);
+        }
+    }
+
+    Object.keys(algoBtns).forEach(key => {
+        algoBtns[key].addEventListener('click', () => handleAlgoSelect(key));
+    });
+
+    playPauseBtn.addEventListener('click', () => {
+        if (state.isPlaying) pauseAnimation(); else playAnimation();
+    });
+    
+    stepBtn.addEventListener('click', doStep);
+    resetBtn.addEventListener('click', () => {
+        if(state.currentAlgorithm) handleAlgoSelect(state.currentAlgorithm);
+    });
+    
+    speedSlider.addEventListener('input', (e) => {
+        state.animationSpeed = 2100 - e.target.value;
+    });
+
+    window.addEventListener('resize', resizeCanvas);
+    
+    resizeCanvas();
+    handleAlgoSelect('bfs');
+});
+
+// --- New function for code copying ---
+function copyCode(button) {
+    const pre = button.parentElement;
+    const code = pre.querySelector('code');
+    const text = code.innerText;
+    
+    navigator.clipboard.writeText(text).then(() => {
+        button.textContent = 'Copied!';
+        setTimeout(() => {
+            button.textContent = 'Copy';
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy text: ', err);
+    });
+}
+</script>
+</body>
+</html>

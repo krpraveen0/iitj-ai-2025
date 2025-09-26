@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Guide to AI Agents</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Chosen Palette: Warm Neutrals -->
+    <!-- Application Structure Plan: The application is structured as a single-page dashboard with two main tabs: 'Simple Reflex Agent' and 'Model-Based Reflex Agent'. This tabbed navigation was chosen to allow users to focus on one concept at a time while enabling easy, direct comparison between the two agent types. For each agent, the information is broken down into three logical sections: 1) Core Concept & Example, 2) The Logic (Mathematical Breakdown and an Interactive Flowchart), and 3) Python Implementation. This structure guides the user from high-level theory to practical application, enhancing understanding. The interactive flowchart is the centerpiece, designed to make the abstract mathematical functions tangible and explorable for better learning retention. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Agent Definitions & Examples. Goal: Inform. Method: Styled text cards with icons (HTML/CSS). Interaction: None. Justification: Clear, immediate context.
+        - Report Info: Mathematical Formulas. Goal: Explain Logic. Method: Interactive Flowchart Diagram (HTML/CSS/JS). Interaction: Hovering over diagram components reveals tooltips with explanations of the functions and data flow. Justification: This transforms static formulas into a dynamic, visual process, making the concepts of state and direct action more intuitive and easier to grasp than text alone. Library: None (Vanilla JS).
+        - Report Info: Python Code. Goal: Demonstrate Implementation. Method: A formatted code block (HTML `<pre><code>`). Interaction: A 'Copy Code' button. Justification: Provides a practical, usable example of the agent's logic. Library: None (Vanilla JS).
+        - All choices support the tabbed, comparative structure and prioritize learning through interaction over static presentation. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            background-color: #FDFBF8;
+            font-family: 'Inter', sans-serif;
+            color: #4A4A4A;
+        }
+        .nav-btn {
+            transition: all 0.3s ease;
+            border-bottom: 4px solid transparent;
+        }
+        .nav-btn.active {
+            border-bottom-color: #8D7B68;
+            color: #3C3633;
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        .flowchart-box {
+            border: 2px solid #DED0B6;
+            background-color: #FDFBF8;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            position: relative;
+        }
+        .flowchart-arrow {
+            color: #B2A59B;
+            font-size: 2.5rem;
+            line-height: 1;
+        }
+        .tooltip {
+            visibility: hidden;
+            opacity: 0;
+            background-color: #3C3633;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 8px 12px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -100px;
+            width: 200px;
+            transition: opacity 0.3s;
+            font-size: 0.875rem;
+        }
+        .flowchart-box:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+        .code-block {
+            background-color: #2D3748;
+            color: #E2E8F0;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            position: relative;
+            overflow-x: auto;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 0.75rem;
+            right: 0.75rem;
+            background-color: #4A5568;
+            color: #E2E8F0;
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .copy-btn:hover {
+            background-color: #718096;
+        }
+        .hierarchy-node {
+            background-color: white;
+            border: 2px solid #DED0B6;
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            width: 80%;
+            margin: 0 auto;
+        }
+        .hierarchy-plus {
+            color: #8D7B68;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+    </style>
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css">
+</head>
+<body class="antialiased">
+
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        <!-- Header -->
+        <header class="text-center mb-8 md:mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-[#3C3633]">Interactive Guide to AI Agents</h1>
+            <p class="text-lg text-[#8D7B68] mt-2">Explore and compare the fundamental types of AI agents.</p>
+        </header>
+
+        <!-- Hierarchy Section -->
+        <section class="mb-12 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h2 class="text-3xl font-bold text-[#3C3633] text-center mb-4">The Hierarchy of Agents</h2>
+            <p class="text-center text-lg text-[#8D7B68] max-w-3xl mx-auto mb-8">
+                AI agents are organized in a hierarchy, where each level adds new capabilities to the one below it. This shows a progression from simple reactions to complex reasoning and adaptation.
+            </p>
+            <div class="max-w-md mx-auto space-y-4">
+                <div class="hierarchy-node text-center">
+                    <h3 class="font-bold text-lg text-[#3C3633]">🧠 Learning Agent</h3>
+                    <p class="text-sm text-gray-600">Can improve its own performance over time.</p>
+                </div>
+                <div class="text-center hierarchy-plus">+ ADAPTABILITY</div>
+                <div class="hierarchy-node text-center">
+                    <h3 class="font-bold text-lg text-[#3C3633]">⚖️ Utility-Based Agent</h3>
+                    <p class="text-sm text-gray-600">Acts based on preferences and trade-offs.</p>
+                </div>
+                <div class="text-center hierarchy-plus">+ RATIONALITY</div>
+                <div class="hierarchy-node text-center">
+                    <h3 class="font-bold text-lg text-[#3C3633]">🎯 Goal-Based Agent</h3>
+                    <p class="text-sm text-gray-600">Considers future outcomes to achieve goals.</p>
+                </div>
+                <div class="text-center hierarchy-plus">+ FORESIGHT</div>
+                 <div class="hierarchy-node text-center">
+                    <h3 class="font-bold text-lg text-[#3C3633]">🤖 Model-Based Reflex Agent</h3>
+                    <p class="text-sm text-gray-600">Maintains an internal state or "memory".</p>
+                </div>
+                <div class="text-center hierarchy-plus">+ MEMORY</div>
+                <div class="hierarchy-node text-center">
+                    <h3 class="font-bold text-lg text-[#3C3633]">🌡️ Simple Reflex Agent</h3>
+                    <p class="text-sm text-gray-600">Reacts directly to what it senses now.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Navigation -->
+        <nav class="flex flex-wrap justify-center border-b-2 border-[#DED0B6] mb-8">
+            <button id="nav-simple" class="nav-btn text-md md:text-xl font-semibold py-4 px-5 md:px-8 focus:outline-none">
+                🌡️ Simple Reflex
+            </button>
+            <button id="nav-model" class="nav-btn text-md md:text-xl font-semibold py-4 px-5 md:px-8 focus:outline-none">
+                🤖 Model-Based
+            </button>
+            <button id="nav-goal" class="nav-btn text-md md:text-xl font-semibold py-4 px-5 md:px-8 focus:outline-none">
+                🎯 Goal-Based
+            </button>
+            <button id="nav-utility" class="nav-btn text-md md:text-xl font-semibold py-4 px-5 md:px-8 focus:outline-none">
+                ⚖️ Utility-Based
+            </button>
+            <button id="nav-learning" class="nav-btn text-md md:text-xl font-semibold py-4 px-5 md:px-8 focus:outline-none">
+                🧠 Learning
+            </button>
+        </nav>
+
+        <!-- Content Area -->
+        <main>
+            <!-- Simple Reflex Agent Content -->
+            <section id="content-simple" class="content-section space-y-12">
+                <!-- Core Concept -->
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h2 class="text-2xl font-bold text-[#3C3633] mb-3">Core Concept: The Stateless Reactor</h2>
+                    <p class="mb-4">A simple reflex agent selects an action based **only on the current percept**, without any memory of the past. It operates on a direct condition-action rule, like a knee-jerk reaction. Its logic is stateless; the decision is based purely on the "now."</p>
+                    <div class="bg-[#FDFBF8] p-4 rounded-md border border-[#DED0B6]">
+                        <h3 class="font-semibold text-[#8D7B68]">Example: The Automated Thermostat</h3>
+                        <p>Its only job is to turn a heater on or off based on the current room temperature. If it's cold, turn on. If it's warm, turn off. It doesn't remember if it was cold five minutes ago.</p>
+                    </div>
+                </div>
+
+                <!-- The Logic -->
+                <div class="grid md:grid-cols-2 gap-8 items-center">
+                    <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-full">
+                        <h2 class="text-2xl font-bold text-[#3C3633] mb-3">Mathematical Breakdown</h2>
+                        <p class="mb-4">The agent's behavior is a direct function \(f\) that maps the current percept (\(p_t\)) to an action (\(a_t\)).</p>
+                        <div class="bg-gray-100 p-4 rounded-md text-center text-xl font-mono text-[#3C3633]">
+                           \(a_t = f(p_t)\)
+                        </div>
+                         <ul class="mt-4 space-y-2 text-sm">
+                            <li><span class="font-semibold text-[#8D7B68]">Percepts (P):</span> The current temperature, \(p_t \in \mathbb{R}\).</li>
+                            <li><span class="font-semibold text-[#8D7B68]">Actions (A):</span> \(\{ \text{HEATER\_ON}, \text{HEATER\_OFF} \}\).</li>
+                        </ul>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-full">
+                         <h2 class="text-2xl font-bold text-[#3C3633] mb-3">Interactive Logic Flow</h2>
+                         <p class="text-sm mb-4">Hover over the components to see how information flows.</p>
+                         <div class="flex items-center justify-center space-x-4 md:space-x-6 py-4">
+                            <div class="flowchart-box" data-tooltip="The sensory input from the environment at a specific moment. For the thermostat, this is the current temperature reading.">
+                                <span class="font-semibold">Percept</span>
+                                (\(p_t\))
+                                <div class="tooltip">The sensory input from the environment at a specific moment (e.g., current temperature).</div>
+                            </div>
+                            <div class="flowchart-arrow">→</div>
+                            <div class="flowchart-box" data-tooltip="A predefined set of rules that maps the percept to an action. This function contains the agent's entire logic.">
+                                <span class="font-semibold">Agent Function</span>
+                                (\(f\))
+                                <div class="tooltip">A predefined set of rules (the agent's 'brain') that maps the percept to a direct action.</div>
+                            </div>
+                            <div class="flowchart-arrow">→</div>
+                            <div class="flowchart-box" data-tooltip="The output command executed by the agent. For the thermostat, this is turning the heater on or off.">
+                                <span class="font-semibold">Action</span>
+                                (\(a_t\))
+                                <div class="tooltip">The output command executed by the agent (e.g., turn heater ON).</div>
+                            </div>
+                         </div>
+                    </div>
+                </div>
+                
+                <!-- Python Implementation -->
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h2 class="text-2xl font-bold text-[#3C3633] mb-3">Python Implementation</h2>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <pre><code class="language-python">import time
+import random
+
+class SimpleThermostatAgent:
+    """A simple reflex agent that acts based only on the current temperature."""
+    def __init__(self, desired_temp):
+        self.desired_temp = desired_temp
+
+    def choose_action(self, current_percept):
+        """Implements the function a_t = f(p_t)."""
+        current_temperature = current_percept['temperature']
+        if current_temperature < self.desired_temp:
+            return 'HEATER_ON'
+        else:
+            return 'HEATER_OFF'
+
+class RoomEnvironment:
+    """Simulates a room where temperature changes."""
+    def __init__(self, initial_temp):
+        self.temperature = initial_temp
+
+    def get_percept(self):
+        return {'temperature': self.temperature}
+
+    def update(self, action):
+        if action == 'HEATER_ON':
+            self.temperature += 0.5
+        else:
+            self.temperature -= 0.2
+        self.temperature += random.uniform(-0.1, 0.1)
+
+# --- Simulation ---
+room = RoomEnvironment(initial_temp=18.5)
+thermostat = SimpleThermostatAgent(desired_temp=20.0)
+
+for step in range(5):
+    percept = room.get_percept()
+    action = thermostat.choose_action(percept)
+    print(f"Temp: {percept['temperature']:.1f}°C -> Action: {action}")
+    room.update(action)
+    time.sleep(1)</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Model-Based Reflex Agent Content -->
+            <section id="content-model" class="content-section space-y-12">
+                <!-- Core Concept -->
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h2 class="text-2xl font-bold text-[#3C3633] mb-3">Core Concept: The Stateful Reactor</h2>
+                    <p class="mb-4">A model-based agent maintains an **internal state** (or "model") of the world to make decisions. This allows it to handle situations where the current percept alone isn't enough to act optimally. It "remembers" information.</p>
+                    <div class="bg-[#FDFBF8] p-4 rounded-md border border-[#DED0B6]">
+                        <h3 class="font-semibold text-[#8D7B68]">Example: A Smarter Robot Vacuum</h3>
+                        <p>It senses dirt, but it also **remembers its own location**. If it senses a clean floor, its decision to move to another room depends on its internal memory of where it currently is.</p>
+                    </div>
+                </div>
+
+                <!-- The Logic -->
+                <div class="grid md:grid-cols-2 gap-8 items-start">
+                     <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-full">
+                        <h2 class="text-2xl font-bold text-[#3C3633] mb-3">Mathematical Breakdown</h2>
+                        <p class="mb-4">The agent uses a **state update function** (\(g\)) to maintain its internal model (\(s_t\)) and an **agent function** (\(f\)) that uses this state to choose an action.</p>
+                        <div class="space-y-3">
+                            <div class="bg-gray-100 p-4 rounded-md text-center text-xl font-mono text-[#3C3633]">
+                               \(s_t = g(s_{t-1}, a_{t-1})\)
+                            </div>
+                             <div class="bg-gray-100 p-4 rounded-md text-center text-xl font-mono text-[#3C3633]">
+                               \(a_t = f(s_t, p_t)\)
+                            </div>
+                        </div>
+                        <ul class="mt-4 space-y-2 text-sm">
+                            <li><span class="font-semibold text-[#8D7B68]">Internal State (\(S_{internal}\)):</span> The agent's belief about its location, \(\{ \text{IN\_ROOM\_A}, \text{IN\_ROOM\_B} \}\).</li>
+                        </ul>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-full">
+                         <h2 class="text-2xl font-bold text-[#3C3633] mb-3">Interactive Logic Flow</h2>
+                         <p class="text-sm mb-4">Hover over the components to see the more complex flow.</p>
+                         <div class="space-y-4">
+                            <div class="flex items-center justify-center space-x-2">
+                                <div class="flowchart-box" data-tooltip="The previous action taken by the agent, used to predict how the world (and its internal state) has changed.">
+                                    <span class="font-semibold">Past Action</span> (\(a_{t-1}\))
+                                    <div class="tooltip">The agent's previous action (e.g., MOVE_TO_B).</div>
+                                </div>
+                                <div class="flowchart-arrow">→</div>
+                                <div class="flowchart-box" data-tooltip="The state update function, which modifies the agent's internal model based on its actions and new percepts.">
+                                    <span class="font-semibold">Update State</span> (\(g\))
+                                    <div class="tooltip">Updates the internal model based on the last action.</div>
+                                </div>
+                                <div class="flowchart-arrow">→</div>
+                                <div class="flowchart-box" data-tooltip="The agent's current belief about the state of the world (e.g., 'I am in Room A'). This is its memory.">
+                                    <span class="font-semibold">Internal State</span> (\(s_t\))
+                                    <div class="tooltip">The agent's memory of its current situation (e.g., 'I am in Room B').</div>
+                                </div>
+                            </div>
+                            <div class="flex justify-center items-center">
+                                <div class="flowchart-arrow transform -rotate-90">↑</div>
+                                <div class="w-24"></div>
+                                <div class="flowchart-arrow transform rotate-90">↓</div>
+                            </div>
+                             <div class="flex items-center justify-center space-x-2">
+                                <div class="flowchart-box" data-tooltip="The new sensory input from the environment (e.g., 'The current room is CLEAN').">
+                                    <span class="font-semibold">Percept</span> (\(p_t\))
+                                    <div class="tooltip">New sensory input (e.g., 'This room is DIRTY').</div>
+                                </div>
+                                <div class="flowchart-arrow">→</div>
+                                <div class="flowchart-box" data-tooltip="The agent function now uses both the internal state (memory) and the current percept to make a more informed decision.">
+                                    <span class="font-semibold">Agent Function</span> (\(f\))
+                                    <div class="tooltip">The 'brain' now uses both memory AND percepts to decide.</div>
+                                </div>
+                                <div class="flowchart-arrow">→</div>
+                                <div class="flowchart-box" data-tooltip="The final output action, which is more intelligent because it's based on a model of the world.">
+                                    <span class="font-semibold">Action</span> (\(a_t\))
+                                    <div class="tooltip">A more intelligent action based on context (e.g., 'Move to other room').</div>
+                                </div>
+                            </div>
+                         </div>
+                    </div>
+                </div>
+
+                <!-- Python Implementation -->
+                 <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h2 class="text-2xl font-bold text-[#3C3333] mb-3">Python Implementation</h2>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <pre><code class="language-python">import time
+import random
+
+class ModelBasedVacuumAgent:
+    """A model-based agent that remembers its location."""
+    def __init__(self, initial_location):
+        self.internal_state_location = initial_location
+
+    def update_state(self, last_action):
+        """Implements s_t = g(s_{t-1}, a_{t-1})."""
+        if last_action == 'MOVE_TO_B':
+            self.internal_state_location = 'B'
+        elif last_action == 'MOVE_TO_A':
+            self.internal_state_location = 'A'
+
+    def choose_action(self, percept):
+        """Implements a_t = f(s_t, p_t)."""
+        location_status = percept['status']
+        if location_status == 'DIRTY':
+            return 'SUCK'
+        elif self.internal_state_location == 'A':
+            return 'MOVE_TO_B'
+        elif self.internal_state_location == 'B':
+            return 'MOVE_TO_A'
+
+class TwoRoomEnvironment:
+    """Simulates a two-room world."""
+    def __init__(self):
+        self.room_status = {'A': 'DIRTY', 'B': 'DIRTY'}
+        self.agent_location = 'A'
+
+    def get_percept(self):
+        return {'status': self.room_status[self.agent_location]}
+
+    def update(self, action):
+        if action == 'SUCK':
+            self.room_status[self.agent_location] = 'CLEAN'
+        elif action == 'MOVE_TO_B':
+            self.agent_location = 'B'
+        elif action == 'MOVE_TO_A':
+            self.agent_location = 'A'
+
+# --- Simulation ---
+house = TwoRoomEnvironment()
+vacuum = ModelBasedVacuumAgent(initial_location='A')
+last_action = None
+
+for step in range(5):
+    if last_action:
+        vacuum.update_state(last_action)
+    percept = house.get_percept()
+    action = vacuum.choose_action(percept)
+    print(f"Location: {vacuum.internal_state_location}, Percept: {percept['status']} -> Action: {action}")
+    house.update(action)
+    last_action = action
+    time.sleep(1)</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Goal-Based Agent Content -->
+            <section id="content-goal" class="content-section space-y-12">
+                <!-- Core Concept -->
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h2 class="text-2xl font-bold text-[#3C3333] mb-3">Core Concept: The Future Planner</h2>
+                    <p class="mb-4">A goal-based agent goes beyond simple reactions by considering the **consequences of its actions**. It has a specific **goal**—a desirable state—and chooses actions that will help it achieve that goal. This often involves search and planning to find a sequence of actions.</p>
+                    <div class="bg-[#FDFBF8] p-4 rounded-md border border-[#DED0B6]">
+                        <h3 class="font-semibold text-[#8D7B68]">Example: GPS Navigation</h3>
+                        <p>A GPS system knows your destination (the goal). It doesn't just make the next turn based on the current street; it calculates a full route (a sequence of actions) by simulating different paths to see which one best reaches the goal.</p>
+                    </div>
+                </div>
+
+                <!-- The Logic -->
+                <div class="grid md:grid-cols-2 gap-8 items-start">
+                     <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-full">
+                        <h2 class="text-2xl font-bold text-[#3C3333] mb-3">Logical Breakdown</h2>
+                        <p class="mb-4">The agent needs to know its **goal** and a **transition model** (how the world works). It then uses search algorithms to find a sequence of actions that leads to the goal state.</p>
+                        <p>The core question is: "What sequence of actions will get me from my current state to my goal state?"</p>
+                        <ul class="mt-4 space-y-2 text-sm">
+                            <li><span class="font-semibold text-[#8D7B68]">Goal (\(S_g\)):</span> A set of desirable world states.</li>
+                            <li><span class="font-semibold text-[#8D7B68]">Transition Model (\(T\)):</span> Predicts the next state based on the current state and an action. \(s' = T(s, a)\).</li>
+                             <li><span class="font-semibold text-[#8D7B68]">Planning:</span> The process of finding a sequence of actions \([a_1, a_2, ..., a_n]\) to reach the goal.</li>
+                        </ul>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-full">
+                         <h2 class="text-2xl font-bold text-[#3C3333] mb-3">Interactive Logic Flow</h2>
+                         <p class="text-sm mb-4">Hover over the components to see how the agent plans ahead.</p>
+                         <div class="space-y-4">
+                             <div class="flex items-center justify-center space-x-2">
+                                <div class="flowchart-box" data-tooltip="The agent's current understanding of the world, just like the model-based agent.">
+                                    <span class="font-semibold">Current State</span> (\(s_t\))
+                                    <div class="tooltip">The agent's current state (e.g., at intersection X).</div>
+                                </div>
+                                <div class="flowchart-arrow">→</div>
+                                 <div class="flowchart-box" data-tooltip="The agent considers various possible actions it could take from its current state.">
+                                    <span class="font-semibold">Possible Actions</span>
+                                    <div class="tooltip">What can I do now? (e.g., turn left, go straight).</div>
+                                </div>
+                             </div>
+                             <div class="flex justify-center">
+                                 <div class="flowchart-arrow transform rotate-90">↓</div>
+                             </div>
+                             <div class="flowchart-box w-3/4 mx-auto" data-tooltip="The agent simulates the outcome of action sequences. 'What happens if I turn left, then right?' It uses its internal model of the world for this prediction.">
+                                <span class="font-semibold">"What if...?" Simulation (Search/Planning)</span>
+                                <div class="tooltip">Simulate action sequences to see where they lead.</div>
+                            </div>
+                             <div class="flex justify-center">
+                                 <div class="flowchart-arrow transform rotate-90">↓</div>
+                             </div>
+                             <div class="flex items-center justify-center space-x-2">
+                                 <div class="flowchart-box" data-tooltip="The simulated sequence of actions is checked to see if it results in a state that matches the goal.">
+                                    <span class="font-semibold">Compare with Goal</span>
+                                    <div class="tooltip">Does this path get me to my destination?</div>
+                                </div>
+                                <div class="flowchart-arrow">→</div>
+                                <div class="flowchart-box" data-tooltip="Once a sequence of actions is found that achieves the goal, the agent executes the first action in that sequence.">
+                                    <span class="font-semibold">Action</span> (\(a_t\))
+                                    <div class="tooltip">Execute the first action of the successful plan.</div>
+                                </div>
+                            </div>
+                         </div>
+                    </div>
+                </div>
+
+                <!-- Python Implementation -->
+                 <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h2 class="text-2xl font-bold text-[#3C3333] mb-3">Python Implementation</h2>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <pre><code class="language-python">import time
+
+class GoalBasedNavigationAgent:
+    """A simple goal-based agent for navigating a 1D track."""
+    def __init__(self, initial_position, goal_position):
+        self.position = initial_position
+        self.goal = goal_position
+        print(f"Agent created at position {self.position}, goal is {self.goal}")
+
+    def choose_action(self):
+        """Plans a simple path to the goal."""
+        # This is a very simple form of planning.
+        if self.position < self.goal:
+            return 'MOVE_RIGHT'
+        elif self.position > self.goal:
+            return 'MOVE_LEFT'
+        else:
+            return 'STAY'
+
+class TrackEnvironment:
+    """Simulates a 1D track."""
+    def __init__(self, agent):
+        self.agent = agent
+
+    def update(self, action):
+        if action == 'MOVE_RIGHT':
+            self.agent.position += 1
+        elif action == 'MOVE_LEFT':
+            self.agent.position -= 1
+
+# --- Simulation ---
+agent = GoalBasedNavigationAgent(initial_position=3, goal_position=10)
+track = TrackEnvironment(agent)
+
+for step in range(10):
+    if agent.position == agent.goal:
+        print(f"Position: {agent.position} -> Goal Reached!")
+        break
+    
+    action = agent.choose_action()
+    print(f"Position: {agent.position} -> Action: {action}")
+    track.update(action)
+    time.sleep(0.5)
+</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Utility-Based Agent Content -->
+            <section id="content-utility" class="content-section space-y-12">
+                <!-- Core Concept -->
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h2 class="text-2xl font-bold text-[#3C3333] mb-3">Core Concept: The Rational Decision-Maker</h2>
+                    <p class="mb-4">A utility-based agent acts not just on goals, but on **preferences**. When there are conflicting goals or when some goals are more important than others, it uses a **utility function** to quantify "happiness" or "desirability" for different world states. It then chooses the action that leads to the state with the highest **expected utility**.</p>
+                    <div class="bg-[#FDFBF8] p-4 rounded-md border border-[#DED0B6]">
+                        <h3 class="font-semibold text-[#8D7B68]">Example: Ride-Sharing App Assistant</h3>
+                        <p>A personal assistant booking a ride has multiple factors to consider: cost, speed, and comfort. A fast, luxurious ride is expensive, while a slow, shared ride is cheap. A utility-based agent weighs these factors based on your preferences to choose the "best" option for you, not just the one that reaches the destination.</p>
+                    </div>
+                </div>
+
+                <!-- The Logic -->
+                <div class="grid md:grid-cols-2 gap-8 items-start">
+                     <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-full">
+                        <h2 class="text-2xl font-bold text-[#3C3333] mb-3">Mathematical Breakdown</h2>
+                        <p class="mb-4">The agent's decision is based on maximizing expected utility. It uses a utility function \(U(s)\) that assigns a real number to each state \(s\), representing its desirability.</p>
+                        <p>The agent chooses the action \(a\) that maximizes the expected utility of the outcome states \(s'\).</p>
+                         <div class="bg-gray-100 p-4 rounded-md text-center text-lg font-mono text-[#3C3333] mt-4">
+                           \( \text{action} = \arg\max_a \sum_{s'} P(s' | s, a) \cdot U(s') \)
+                        </div>
+                        <ul class="mt-4 space-y-2 text-sm">
+                            <li><span class="font-semibold text-[#8D7B68]">Utility Function (\(U(s)\)):</span> A score for how "good" a state is.</li>
+                            <li><span class="font-semibold text-[#8D7B68]">Probability (\(P(s' | s, a)\)):</span> The probability of reaching state \(s'\) from state \(s\) after taking action \(a\).</li>
+                        </ul>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-full">
+                         <h2 class="text-2xl font-bold text-[#3C3333] mb-3">Interactive Logic Flow</h2>
+                         <p class="text-sm mb-4">Hover over the components to see how the agent weighs its options.</p>
+                         <div class="space-y-4">
+                             <div class="flex items-center justify-center space-x-2">
+                                <div class="flowchart-box" data-tooltip="The agent's current understanding of the world.">
+                                    <span class="font-semibold">Current State</span> (\(s\))
+                                    <div class="tooltip">The agent's current state (e.g., needs a ride).</div>
+                                </div>
+                                <div class="flowchart-arrow">→</div>
+                                 <div class="flowchart-box" data-tooltip="The agent uses its model of the world to predict the possible outcomes for each action.">
+                                    <span class="font-semibold">Predict Outcomes</span>
+                                    <div class="tooltip">What are the possible results of each action?</div>
+                                </div>
+                             </div>
+                             <div class="flex justify-center">
+                                 <div class="flowchart-arrow transform rotate-90">↓</div>
+                             </div>
+                             <div class="flowchart-box w-3/4 mx-auto" data-tooltip="The agent's utility function assigns a 'happiness' score to each predicted outcome state. A fast, cheap ride gets a high score.">
+                                <span class="font-semibold">Evaluate Utility of Outcomes (\(U(s')\))</span>
+                                <div class="tooltip">How good is each possible outcome? (e.g., fast arrival is +50, high cost is -30).</div>
+                            </div>
+                             <div class="flex justify-center">
+                                 <div class="flowchart-arrow transform rotate-90">↓</div>
+                             </div>
+                             <div class="flex items-center justify-center space-x-2">
+                                 <div class="flowchart-box" data-tooltip="The agent calculates the expected utility for each action by weighing the utility of its outcomes by their probability.">
+                                    <span class="font-semibold">Choose Max Utility</span>
+                                    <div class="tooltip">Which action provides the best balance of outcomes?</div>
+                                </div>
+                                <div class="flowchart-arrow">→</div>
+                                <div class="flowchart-box" data-tooltip="The agent executes the action that leads to the highest expected 'happiness' score.">
+                                    <span class="font-semibold">Action</span> (\(a_t\))
+                                    <div class="tooltip">Execute the action with the highest expected utility.</div>
+                                </div>
+                            </div>
+                         </div>
+                    </div>
+                </div>
+
+                <!-- Python Implementation -->
+                 <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h2 class="text-2xl font-bold text-[#3C3333] mb-3">Python Implementation</h2>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <pre><code class="language-python">import time
+
+class UtilityBasedRoutingAgent:
+    """An agent that chooses a travel route to maximize utility."""
+    def __init__(self, time_preference, cost_preference):
+        # Negative weights because time and cost are undesirable
+        self.w_time = -abs(time_preference)
+        self.w_cost = -abs(cost_preference)
+        print(f"Agent created with preferences: Time={self.w_time}, Cost={self.w_cost}")
+
+    def utility(self, time, cost):
+        """Calculates the utility of a route."""
+        return (self.w_time * time) + (self.w_cost * cost)
+
+    def choose_action(self, options):
+        """Chooses the route with the highest utility."""
+        best_option = None
+        max_utility = -float('inf')
+
+        for name, stats in options.items():
+            u = self.utility(stats['time'], stats['cost'])
+            print(f"  - Evaluating '{name}': Utility = {u:.2f}")
+            if u > max_utility:
+                max_utility = u
+                best_option = name
+        
+        return best_option
+
+# --- Simulation ---
+# Let's define some travel options
+route_options = {
+    'Fast_Toll_Road': {'time': 20, 'cost': 15},
+    'City_Streets': {'time': 45, 'cost': 5},
+    'Scenic_Route': {'time': 60, 'cost': 2}
+}
+
+# 1. An agent who values time highly
+agent_in_a_hurry = UtilityBasedRoutingAgent(time_preference=10, cost_preference=2)
+choice1 = agent_in_a_hurry.choose_action(route_options)
+print(f"-> Agent in a hurry chose: {choice1}\n")
+
+# 2. An agent who is trying to save money
+frugal_agent = UtilityBasedRoutingAgent(time_preference=2, cost_preference=10)
+choice2 = frugal_agent.choose_action(route_options)
+print(f"-> Frugal agent chose: {choice2}")
+</code></pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Learning Agent Content -->
+            <section id="content-learning" class="content-section space-y-12">
+                <!-- Core Concept -->
+                <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h2 class="text-2xl font-bold text-[#3C3333] mb-3">Core Concept: The Improver</h2>
+                    <p class="mb-4">A learning agent is not designed with a fixed logic; it can **improve its performance over time** by learning from its experiences. It consists of a performance element (what it does) and a learning element (how it improves). This allows it to adapt to new or changing environments.</p>
+                    <div class="bg-[#FDFBF8] p-4 rounded-md border border-[#DED0B6]">
+                        <h3 class="font-semibold text-[#8D7B68]">Example: Spam Filter</h3>
+                        <p>A spam filter starts with some basic rules. When you mark an email as "spam," the agent's **learning element** analyzes that email's features (words, sender, etc.) and updates the **performance element** to better detect similar spam in the future.</p>
+                    </div>
+                </div>
+
+                <!-- The Logic -->
+                <div class="grid md:grid-cols-2 gap-8 items-start">
+                     <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-full">
+                        <h2 class="text-2xl font-bold text-[#3C3333] mb-3">Logical Breakdown</h2>
+                        <p class="mb-4">A learning agent is structured into four main components that work together in a cycle of action and improvement.</p>
+                        <ul class="mt-4 space-y-3 text-sm">
+                            <li><span class="font-semibold text-[#8D7B68]">Performance Element:</span> The "actor." It uses its current knowledge to choose and perform actions. This is like the agent's 'body'.</li>
+                            <li><span class="font-semibold text-[#8D7B68]">Critic:</span> The "evaluator." It observes the agent's performance and provides feedback (e.g., "that action led to a good outcome") to the learning element.</li>
+                            <li><span class="font-semibold text-[#8D7B68]">Learning Element:</span> The "brain." It uses the critic's feedback to update the performance element's knowledge and rules, making it better over time.</li>
+                             <li><span class="font-semibold text-[#8D7B68]">Problem Generator:</span> The "explorer." It suggests new or exploratory actions to the performance element to see what happens, leading to new learning experiences.</li>
+                        </ul>
+                    </div>
+                    <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200 h-full">
+                         <h2 class="text-2xl font-bold text-[#3C3333] mb-3">Interactive Logic Flow</h2>
+                         <p class="text-sm mb-4">Hover over the components to see the learning cycle.</p>
+                         <div class="border-2 border-dashed border-[#B2A59B] p-4 rounded-lg text-center relative">
+                             <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#FDFBF8] px-2 font-bold text-[#8D7B68]">Agent</div>
+                             
+                             <div class="flowchart-box w-3/4 mx-auto mb-4" data-tooltip="The part of the agent that acts on the environment.">
+                                 <span class="font-semibold">Performance Element</span>
+                                 <div class="tooltip">Chooses and performs actions.</div>
+                             </div>
+
+                             <div class="grid grid-cols-3 items-center gap-2 mb-4">
+                                 <div class="flowchart-box" data-tooltip="Provides feedback on how well the agent is doing.">
+                                    <span class="font-semibold">Critic</span>
+                                    <div class="tooltip">Evaluates performance and provides feedback.</div>
+                                 </div>
+                                 <div class="flowchart-arrow">↑↓</div>
+                                 <div class="flowchart-box" data-tooltip="Updates the agent's knowledge based on feedback.">
+                                    <span class="font-semibold">Learning Element</span>
+                                    <div class="tooltip">Uses feedback to make improvements.</div>
+                                 </div>
+                             </div>
+
+                             <div class="flowchart-box w-3/4 mx-auto" data-tooltip="Suggests novel actions to encourage exploration.">
+                                 <span class="font-semibold">Problem Generator</span>
+                                 <div class="tooltip">Suggests new actions to gain experience.</div>
+                             </div>
+                         </div>
+                    </div>
+                </div>
+
+                <!-- Python Implementation -->
+                 <div class="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h2 class="text-2xl font-bold text-[#3C3333] mb-3">Python Implementation</h2>
+                    <div class="code-block">
+                        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                        <pre><code class="language-python">import random
+
+class LearningGuesserAgent:
+    """An agent that learns to guess a number by narrowing its range."""
+    def __init__(self):
+        # Performance Element: The knowledge used to act.
+        self.min_range = 0
+        self.max_range = 100
+        print("Agent created. Ready to learn!")
+
+    def choose_action(self):
+        """The Performance Element in action."""
+        guess = random.randint(self.min_range, self.max_range)
+        return guess
+
+    def learn(self, last_guess, feedback):
+        """The Learning Element: Updates knowledge based on feedback."""
+        # The 'Critic' is the external feedback ('too_high' or 'too_low').
+        print(f"  - Learning from feedback: Guess {last_guess} was {feedback}")
+        if feedback == 'too_high':
+            self.max_range = last_guess - 1
+        elif feedback == 'too_low':
+            self.min_range = last_guess + 1
+
+# --- Simulation ---
+agent = LearningGuesserAgent()
+secret_number = 42
+
+for i in range(10):
+    # Agent's performance element makes a guess
+    guess = agent.choose_action()
+    
+    # Environment provides feedback (acting as the Critic)
+    if guess == secret_number:
+        print(f"Guess {guess}: Correct! Agent learned in {i+1} tries.")
+        break
+    elif guess > secret_number:
+        feedback = 'too_high'
+    else:
+        feedback = 'too_low'
+        
+    # Agent's learning element updates its knowledge
+    agent.learn(guess, feedback)
+</code></pre>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        const navSimple = document.getElementById('nav-simple');
+        const navModel = document.getElementById('nav-model');
+        const navGoal = document.getElementById('nav-goal');
+        const navUtility = document.getElementById('nav-utility');
+        const navLearning = document.getElementById('nav-learning');
+        const contentSimple = document.getElementById('content-simple');
+        const contentModel = document.getElementById('content-model');
+        const contentGoal = document.getElementById('content-goal');
+        const contentUtility = document.getElementById('content-utility');
+        const contentLearning = document.getElementById('content-learning');
+
+        function showTab(tabName) {
+            contentSimple.classList.remove('active');
+            contentModel.classList.remove('active');
+            contentGoal.classList.remove('active');
+            contentUtility.classList.remove('active');
+            contentLearning.classList.remove('active');
+            navSimple.classList.remove('active');
+            navModel.classList.remove('active');
+            navGoal.classList.remove('active');
+            navUtility.classList.remove('active');
+            navLearning.classList.remove('active');
+
+            if (tabName === 'simple') {
+                contentSimple.classList.add('active');
+                navSimple.classList.add('active');
+            } else if (tabName === 'model') {
+                contentModel.classList.add('active');
+                navModel.classList.add('active');
+            } else if (tabName === 'goal') {
+                contentGoal.classList.add('active');
+                navGoal.classList.add('active');
+            } else if (tabName === 'utility') {
+                contentUtility.classList.add('active');
+                navUtility.classList.add('active');
+            } else if (tabName === 'learning') {
+                contentLearning.classList.add('active');
+                navLearning.classList.add('active');
+            }
+        }
+
+        navSimple.addEventListener('click', () => showTab('simple'));
+        navModel.addEventListener('click', () => showTab('model'));
+        navGoal.addEventListener('click', () => showTab('goal'));
+        navUtility.addEventListener('click', () => showTab('utility'));
+        navLearning.addEventListener('click', () => showTab('learning'));
+
+        function copyCode(button) {
+            const codeBlock = button.nextElementSibling;
+            const text = codeBlock.textContent;
+            
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+
+            button.textContent = 'Copied!';
+            setTimeout(() => {
+                button.textContent = 'Copy';
+            }, 2000);
+        }
+
+        // Show the simple agent tab by default on page load
+        window.onload = () => {
+            showTab('simple');
+        };
+    </script>
+
+</body>
+</html>
+
